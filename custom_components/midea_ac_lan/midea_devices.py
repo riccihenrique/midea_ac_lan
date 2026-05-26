@@ -2329,6 +2329,7 @@ MIDEA_DEVICES: dict[int, dict[str, dict[str, Any] | str]] = {
                 "estimate": {
                     "kind": "energy",
                     "values": {
+                        "Germ": 0.765,
                         "ECO Wash": 0.99,
                         "Strong Wash": 1.28,
                         "Hour Wash": 0.91,
@@ -2349,6 +2350,7 @@ MIDEA_DEVICES: dict[int, dict[str, dict[str, Any] | str]] = {
                 "estimate": {
                     "kind": "water",
                     "values": {
+                        "Germ": 9.9,
                         "ECO Wash": 10.4,
                         "Strong Wash": 13.9,
                         "Hour Wash": 10.4,
