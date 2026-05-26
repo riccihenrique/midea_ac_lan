@@ -82,6 +82,7 @@ class MideaEstimatedUsageSensor(MideaSensor, RestoreEntity):
         super().__init__(device, entity_key)
         self._native_value: float = 0.0
         self._last_status: str | None = None
+        self._running_mode: str | None = None
 
     async def async_added_to_hass(self) -> None:
         """Restore previous accumulated value."""
@@ -91,6 +92,8 @@ class MideaEstimatedUsageSensor(MideaSensor, RestoreEntity):
             except (TypeError, ValueError):
                 self._native_value = 0.0
         self._last_status = cast("str | None", self._device.get_attribute("status"))
+        if self._last_status == "Running":
+            self._running_mode = cast("str | None", self._device.get_attribute("mode"))
 
     @property
     def native_value(self) -> StateType:
@@ -105,16 +108,23 @@ class MideaEstimatedUsageSensor(MideaSensor, RestoreEntity):
             "estimate_source": "fixed_per_wash_mode",
             "known_modes": list(cast("dict[str, float]", estimate["values"]).keys()),
             "last_status": self._last_status,
+            "running_mode": self._running_mode,
         }
 
     def update_state(self, status: Any) -> None:  # noqa: ANN401
-        """Accumulate estimate once when a dishwasher run starts."""
+        """Accumulate estimate once when a dishwasher run finishes."""
         current_status = cast("str | None", self._device.get_attribute("status"))
-        if self._last_status != "Running" and current_status == "Running":
-            mode = cast("str | None", self._device.get_attribute("mode"))
+        current_mode = cast("str | None", self._device.get_attribute("mode"))
+
+        if current_status == "Running":
+            self._running_mode = current_mode
+        elif self._last_status == "Running":
+            mode = self._running_mode or current_mode
             values = cast("dict[str, float]", self._config["estimate"]["values"])
             if mode in values:
                 self._native_value += values[mode]
+            self._running_mode = None
+
         self._last_status = current_status
         super().update_state(status)
         if (
