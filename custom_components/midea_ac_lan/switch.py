@@ -27,7 +27,9 @@ async def async_setup_entry(
         "dict",
         MIDEA_DEVICES[device.device_type]["entities"],
     ).items():
-        if config["type"] == Platform.SWITCH and entity_key in extra_switches:
+        if config["type"] == Platform.SWITCH and (
+            config.get("default") or entity_key in extra_switches
+        ):
             dev = MideaSwitch(device, entity_key)
             switches.append(dev)
     async_add_entities(switches)
@@ -39,12 +41,33 @@ class MideaSwitch(MideaEntity, ToggleEntity):
     @property
     def is_on(self) -> bool:
         """Return true if switch is on."""
-        return cast("bool", self._device.get_attribute(self._entity_key))
+        value = self._device.get_attribute(self._attribute_key)
+        if "is_on_value" in self._config:
+            return value == self._config["is_on_value"]
+        return cast("bool", value)
 
     def turn_on(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Turn on switch."""
+        if self._config.get("set_message") == "e1_start_pause":
+            self._send_e1_work_status(0x03)
+            return
         self._device.set_attribute(attr=self._entity_key, value=True)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Turn off switch."""
+        if self._config.get("set_message") == "e1_start_pause":
+            self._send_e1_work_status(0x01)
+            return
         self._device.set_attribute(attr=self._entity_key, value=False)
+
+    def _send_e1_work_status(self, work_status: int) -> None:
+        """Set E1 dishwasher work status using midea-local's work message."""
+        from midealocal.devices.e1.message import MessageWork
+
+        mode_name = self._device.get_attribute("mode")
+        modes: dict[int, str] = getattr(self._device, "_modes", {})
+        mode = next((key for key, item in modes.items() if item == mode_name), 0)
+        message = MessageWork(getattr(self._device, "_message_protocol_version"))
+        message.work_status = work_status
+        message.mode = mode
+        self._device.build_send(message)

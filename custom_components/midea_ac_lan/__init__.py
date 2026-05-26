@@ -129,6 +129,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
                             value,
                         )
                     return
+                if item and item.get("set_message") == "e1_start_pause":
+                    if not isinstance(value, bool):
+                        _LOGGER.error(
+                            "Appliance [%s] start/pause value must be boolean",
+                            device_id,
+                        )
+                        return
+                    set_e1_work_status(dev, 0x03 if value else 0x01)
+                    return
                 dev.set_attribute(attr=attr, value=value)
             else:
                 _LOGGER.error(
@@ -149,6 +158,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         from midealocal.devices.e1.message import MessageWork
 
         message = MessageWork(getattr(dev, "_message_protocol_version"))
+        message.mode = mode
+        dev.build_send(message)
+
+    def set_e1_work_status(dev: MideaDevice, work_status: int) -> None:
+        """Set E1 dishwasher work status using midea-local's work message."""
+        mode_name = dev.get_attribute("mode")
+        modes: dict[int, str] = getattr(dev, "_modes", {})
+        mode = next((key for key, item in modes.items() if item == mode_name), 0)
+
+        from midealocal.devices.e1.message import MessageWork
+
+        message = MessageWork(getattr(dev, "_message_protocol_version"))
+        message.work_status = work_status
         message.mode = mode
         dev.build_send(message)
 
