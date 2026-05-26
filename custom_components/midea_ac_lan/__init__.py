@@ -152,6 +152,57 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         message.mode = mode
         dev.build_send(message)
 
+    def service_add_estimated_usage(service: Any) -> None:  # noqa: ANN401
+        """Record one estimated dishwasher run without sending a command."""
+        device_id: int = service.data["device_id"]
+        dev: MideaDevice = hass.data[DOMAIN][DEVICES].get(device_id)
+        if not dev:
+            _LOGGER.error("Appliance [%s] not found", device_id)
+            return
+
+        mode_value = service.data.get("mode", dev.get_attribute("mode"))
+        try:
+            mode_name = get_e1_mode_name(dev, mode_value)
+        except ValueError:
+            _LOGGER.exception(
+                "Appliance [%s] invalid estimated usage mode %s",
+                device_id,
+                mode_value,
+            )
+            return
+
+        old_mode = dev.get_attribute("mode")
+        old_status = dev.get_attribute("status")
+
+        set_local_attribute(dev, "mode", mode_name)
+        set_local_attribute(dev, "status", "Cancel")
+        dev.update_all({"mode": mode_name, "status": "Cancel"})
+
+        set_local_attribute(dev, "status", "Running")
+        dev.update_all({"mode": mode_name, "status": "Running"})
+
+        set_local_attribute(dev, "mode", old_mode)
+        set_local_attribute(dev, "status", old_status)
+        dev.update_all({"mode": old_mode, "status": old_status})
+
+    def get_e1_mode_name(dev: MideaDevice, value: int | str | None) -> str:
+        """Return E1 dishwasher mode name from a mode name or code."""
+        modes: dict[int, str] = getattr(dev, "_modes", {})
+        if isinstance(value, int) and value in modes:
+            return modes[value]
+        if isinstance(value, str) and value in modes.values():
+            return value
+        raise ValueError
+
+    def set_local_attribute(dev: MideaDevice, attr: str, value: Any) -> None:  # noqa: ANN401
+        """Set a midea-local attribute locally for simulation."""
+        attributes = getattr(dev, "_attributes", {})
+        for key in attributes:
+            if str(key) == attr:
+                attributes[key] = value
+                return
+        attributes[attr] = value
+
     def service_send_command(service: Any) -> None:  # noqa: ANN401
         """Send command to service func."""
         device_id = service.data.get("device_id")
@@ -195,6 +246,18 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
                 vol.Required("device_id"): vol.Coerce(int),
                 vol.Required("cmd_type"): vol.In([2, 3]),
                 vol.Required("cmd_body"): str,
+            },
+        ),
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "add_estimated_usage",
+        service_add_estimated_usage,
+        schema=vol.Schema(
+            {
+                vol.Required("device_id"): vol.Coerce(int),
+                vol.Optional("mode"): vol.Any(int, str),
             },
         ),
     )

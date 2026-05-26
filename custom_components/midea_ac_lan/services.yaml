@@ -16,3 +16,10 @@ send_command:
       example: 2
     cmd_body:
       example: "B0FF01370E0000A500"
+
+add_estimated_usage:
+  fields:
+    device_id:
+      example: "1234567890"
+    mode:
+      example: "ECO Wash"
