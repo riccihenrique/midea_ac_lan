@@ -33,6 +33,7 @@ class MideaEntity(Entity):
             MIDEA_DEVICES[self._device.device_type]["entities"],
         )[entity_key]
         self._entity_key = entity_key
+        self._attribute_key = self._config.get("attribute", entity_key)
         self._unique_id = f"{DOMAIN}.{self._device.device_id}_{entity_key}"
         self.entity_id = self._unique_id
         self._device_name = self._device.name
@@ -140,5 +141,5 @@ class MideaEntity(Entity):
             )
             return
 
-        if self._entity_key in status or "available" in status:
+        if self._attribute_key in status or "available" in status:
             self.schedule_update_ha_state()

@@ -91,11 +91,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
             "dict",
             device_entities["entities"],
         ).items():
+            attribute_value = getattr(attribute_name, "value", attribute_name)
             if (
                 attribute.get("type") in EXTRA_SWITCH
-                and attribute_name.value not in attributes
+                and attribute_value not in attributes
             ):
-                attributes.append(attribute_name.value)
+                attributes.append(attribute_value)
 
     def service_set_attribute(service: Any) -> None:  # noqa: ANN401
         """Set service attribute func."""
@@ -118,6 +119,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
                     and value in range(103)
                 )
             ):
+                if item and item.get("set_message") == "e1_work_mode":
+                    try:
+                        set_e1_work_mode(dev, value)
+                    except ValueError:
+                        _LOGGER.exception(
+                            "Appliance [%s] invalid dishwasher mode %s",
+                            device_id,
+                            value,
+                        )
+                    return
                 dev.set_attribute(attr=attr, value=value)
             else:
                 _LOGGER.error(
@@ -125,6 +136,21 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
                     device_id,
                     attr,
                 )
+
+    def set_e1_work_mode(dev: MideaDevice, value: int | str) -> None:
+        """Set E1 dishwasher mode using midea-local's work message."""
+        modes: dict[int, str] = getattr(dev, "_modes", {})
+        mode = value if isinstance(value, int) else None
+        if mode is None:
+            mode = next((key for key, item in modes.items() if item == value), None)
+        if mode not in modes:
+            raise ValueError
+
+        from midealocal.devices.e1.message import MessageWork
+
+        message = MessageWork(getattr(dev, "_message_protocol_version"))
+        message.mode = mode
+        dev.build_send(message)
 
     def service_send_command(service: Any) -> None:  # noqa: ANN401
         """Send command to service func."""
