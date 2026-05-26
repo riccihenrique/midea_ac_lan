@@ -48,26 +48,8 @@ class MideaSwitch(MideaEntity, ToggleEntity):
 
     def turn_on(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Turn on switch."""
-        if self._config.get("set_message") == "e1_start_pause":
-            self._send_e1_work_status(0x03)
-            return
         self._device.set_attribute(attr=self._entity_key, value=True)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Turn off switch."""
-        if self._config.get("set_message") == "e1_start_pause":
-            self._send_e1_work_status(0x01)
-            return
         self._device.set_attribute(attr=self._entity_key, value=False)
-
-    def _send_e1_work_status(self, work_status: int) -> None:
-        """Set E1 dishwasher work status using midea-local's work message."""
-        from midealocal.devices.e1.message import MessageWork
-
-        mode_name = self._device.get_attribute("mode")
-        modes: dict[int, str] = getattr(self._device, "_modes", {})
-        mode = next((key for key, item in modes.items() if item == mode_name), 0)
-        message = MessageWork(getattr(self._device, "_message_protocol_version"))
-        message.work_status = work_status
-        message.mode = mode
-        self._device.build_send(message)

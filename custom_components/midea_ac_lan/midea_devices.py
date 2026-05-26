@@ -2294,15 +2294,6 @@ MIDEA_DEVICES: dict[int, dict[str, dict[str, Any] | str]] = {
                 "name": "Storage",
                 "icon": "mdi:repeat-variant",
             },
-            "start_pause": {
-                "type": Platform.SWITCH,
-                "attribute": E1Attributes.status,
-                "name": "Start/Pause",
-                "icon": "mdi:play-pause",
-                "is_on_value": "Running",
-                "set_message": "e1_start_pause",
-                "default": True,
-            },
             E1Attributes.mode: {
                 "type": Platform.SENSOR,
                 "translation_key": "mode",
