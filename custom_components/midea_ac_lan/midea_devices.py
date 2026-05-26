@@ -2314,7 +2314,7 @@ MIDEA_DEVICES: dict[int, dict[str, dict[str, Any] | str]] = {
                 "attribute": E1Attributes.mode,
                 "name": "Wash Mode",
                 "options_dict": "_modes",
-                "options_codes": [13, 4, 8, 6, 2, 11, 10],
+                "options_codes": [13, 4, 8, 6, 2, 11, 10, 5],
                 "set_message": "e1_work_mode",
                 "icon": "mdi:dishwasher",
                 "default": True,
